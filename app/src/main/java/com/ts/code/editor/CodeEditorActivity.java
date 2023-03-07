@@ -3,16 +3,19 @@ package com.ts.code.editor;
 import android.animation.*;
 import android.app.*;
 import android.content.*;
+import android.content.Intent;
 import android.content.res.*;
 import android.graphics.*;
 import android.graphics.drawable.*;
 import android.media.*;
 import android.net.*;
+import android.net.Uri;
 import android.os.*;
 import android.text.*;
 import android.text.style.*;
 import android.util.*;
 import android.view.*;
+import android.view.View;
 import android.view.View.*;
 import android.view.animation.*;
 import android.webkit.*;
@@ -55,7 +58,9 @@ import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme;
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
 import java.io.InputStreamReader;
 import com.ts.code.editor.editor.Editor;
-import com.ts.code.editor.editor.SoraEditor;
+import com.ts.code.editor.editor.SoraEditor;
+import com.ts.code.editor.editor.AceEditor;
+import com.ts.code.editor.editor.TSUtils;
 
 public class CodeEditorActivity extends AppCompatActivity {
 	
@@ -63,6 +68,7 @@ public class CodeEditorActivity extends AppCompatActivity {
 	private boolean isRequested = false;
 	public CodeEditor LastUsedSoraCodeEditor;
 	private HashMap<String, Object> EditorSessionAddMap = new HashMap<>();
+	public WebView LastUsedAceCodeEditor;
 	
 	private ArrayList<String> FileList = new ArrayList<>();
 	private ArrayList<HashMap<String, Object>> EditorSession = new ArrayList<>();
@@ -88,6 +94,8 @@ public class CodeEditorActivity extends AppCompatActivity {
 	private View FileTreeInflater;
 	private PopupWindow EditorChooserPopupWindow;
 	private View EditorChooser;
+	private MaterialAlertDialogBuilder StoragePermission2;
+	private Intent Preview = new Intent();
 	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -115,9 +123,52 @@ public class CodeEditorActivity extends AppCompatActivity {
 		LinearLayout_FileTreeError_FileTreeError = findViewById(R.id.LinearLayout_FileTreeError_FileTreeError);
 		TextView_FileTreeError_FileTreeError = findViewById(R.id.TextView_FileTreeError_FileTreeError);
 		MaterialDialog = new MaterialAlertDialogBuilder(this);
+		StoragePermission2 = new MaterialAlertDialogBuilder(this);
+		
+		textview2.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View _view) {
+				if (!path.equals("")) {
+					EditorChooser = getLayoutInflater().inflate(R.layout.ide_menu, null);
+					EditorChooserPopupWindow = new PopupWindow(EditorChooser, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+					((LinearLayout)EditorChooser.findViewById(R.id.Option_Run_Preview)).setVisibility(View.GONE);
+					((LinearLayout)EditorChooser.findViewById(R.id.Option_Ace_Editor)).setOnClickListener(new View.OnClickListener() {
+							@Override
+							public void onClick(View _view) {
+							final AceEditor aceCodeEditor = new AceEditor();
+							aceCodeEditor.SetUpAceCodeEditor(editor,path,CodeEditorActivity.this);
+							LastUsedAceCodeEditor =  aceCodeEditor.GetAceEditor();
+							EditorSessionAddMap = new HashMap<>();
+							EditorSessionAddMap.put("editor", LastUsedAceCodeEditor);
+							EditorSessionAddMap.put("path", path);
+							EditorSessionAddMap.put("editor_type", Editor.ACE_EDITOR);
+							EditorSession.add(EditorSessionAddMap);
+							EditorSessionAddMap.clear();
+							}
+					});
+					((LinearLayout)EditorChooser.findViewById(R.id.Option_Sora_Editor)).setOnClickListener(new View.OnClickListener() {
+							@Override
+							public void onClick(View _view) {
+							final SoraEditor soraCodeEditor = new SoraEditor();
+							soraCodeEditor.SetUpSoraCodeEditor(editor,path,CodeEditorActivity.this);
+							LastUsedSoraCodeEditor =  soraCodeEditor.GetSoraEditor();
+							EditorSessionAddMap = new HashMap<>();
+							EditorSessionAddMap.put("editor", LastUsedSoraCodeEditor);
+							EditorSessionAddMap.put("path", path);
+							EditorSessionAddMap.put("editor_type", Editor.SORA_EDITOR);
+							EditorSession.add(EditorSessionAddMap);
+							EditorSessionAddMap.clear();
+							}
+					});
+					EditorChooserPopupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
+					EditorChooserPopupWindow.showAsDropDown(textview2, 0, 0);
+				}
+			}
+		});
 	}
 	
 	private void initializeLogic() {
+		ScrollViewH_EditorSection_FileTab.setVisibility(View.GONE);
 		_UI();
 		if (getIntent().hasExtra("path")) {
 			setTitle(Uri.parse(getIntent().getStringExtra("path")).getLastPathSegment());
@@ -143,6 +194,12 @@ public class CodeEditorActivity extends AppCompatActivity {
 								Uri uri = Uri.fromParts("package", CodeEditorActivity.this.getPackageName(),null);
 								intent.setData(uri);
 								CodeEditorActivity.this.startActivity(intent);
+							}
+						});
+						MaterialDialog.setNegativeButton("No thanks", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								_showRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE, "Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app");
 							}
 						});
 						MaterialDialog.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
@@ -188,7 +245,78 @@ public class CodeEditorActivity extends AppCompatActivity {
 			TextView_FileTreeError_FileTreeError.setText("Read access denied.");
 		}
 	}
-	
+	
+	
+	@Override
+	public void onRequestPermissionsResult(int _requestCode, String[] _permissions, int[] _grantResults) {
+		for(int _repeat24 = 0; _repeat24 < (int)(_permissions.length); _repeat24++) {
+			int position = _repeat24;
+			String Permission = _permissions[position];
+			if (_grantResults[position] == PackageManager.PERMISSION_DENIED) {
+				boolean showRationale = shouldShowRequestPermissionRationale(Permission);
+				if (showRationale) {
+					if (Manifest.permission.READ_EXTERNAL_STORAGE.equals(Permission)) {
+						_showRationale(Permission, "Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app.");
+					}
+					if (Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(Permission)) {
+						_showRationale(Permission, "Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app");
+					}
+				}
+				else {
+					if (Manifest.permission.READ_EXTERNAL_STORAGE.equals(Permission)) {
+						StoragePermission2.setTitle("Storage permission required");
+						StoragePermission2.setMessage("Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app.");
+						StoragePermission2.setPositiveButton("Setting", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								isRequested = true;
+								Intent intent = new Intent();
+								intent.setAction(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+								Uri uri = Uri.fromParts("package", CodeEditorActivity.this.getPackageName(),null);
+								intent.setData(uri);
+								CodeEditorActivity.this.startActivity(intent);
+							}
+						});
+						StoragePermission2.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								finishAffinity();
+							}
+						});
+						StoragePermission2.create().show();
+					}
+					//setting
+					if (Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(Permission)) {
+						StoragePermission2.setTitle("Storage permission required");
+						StoragePermission2.setMessage("Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app.");
+						StoragePermission2.setPositiveButton("Setting", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								isRequested = true;
+								Intent intent = new Intent();
+								intent.setAction(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+								Uri uri = Uri.fromParts("package", CodeEditorActivity.this.getPackageName(),null);
+								intent.setData(uri);
+								CodeEditorActivity.this.startActivity(intent);
+							}
+						});
+						StoragePermission2.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								finishAffinity();
+							}
+						});
+						StoragePermission2.create().show();
+					}
+				}
+			}
+			else {
+				if (Manifest.permission.WRITE_EXTERNAL_STORAGE.equals(Permission)) {
+					startManually();
+				}
+			}
+		}
+	}
 	public void _UI() {
 		// getSupportActionBar().hide();
 	}
@@ -232,7 +360,8 @@ public class CodeEditorActivity extends AppCompatActivity {
 				}
 				else {
 					FileType.setImageResource(R.drawable.outline_description_black_36);
-					ShowMoreOrLess.setVisibility(View.GONE);
+					ShowMoreOrLess.setVisibility(View.INVISIBLE);
+					ShowMoreOrLess.setEnabled(false);
 				}
 				FileName.setText(Uri.parse(FileTree.getString(position)).getLastPathSegment());
 				Layout2.setOnClickListener(new View.OnClickListener() {
@@ -242,12 +371,22 @@ public class CodeEditorActivity extends AppCompatActivity {
 							final Editor MEditor = new Editor();
 							if (MEditor.CanOpenInEditor(FileTree.getString(position))) {
 								final String childPath = FileTree.getString(position);
-								EditorChooser = getLayoutInflater().inflate(R.layout.menu_codeeditor, null);
+								EditorChooser = getLayoutInflater().inflate(R.layout.ide_menu, null);
 								EditorChooserPopupWindow = new PopupWindow(EditorChooser, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+								((LinearLayout)EditorChooser.findViewById(R.id.Option_Run_Preview)).setVisibility(View.GONE);
 								((LinearLayout)EditorChooser.findViewById(R.id.Option_Ace_Editor)).setOnClickListener(new View.OnClickListener() {
 										@Override
 										public void onClick(View _view) {
-										SketchwareUtil.showMessage(getApplicationContext(), "Working on it.");
+										final AceEditor aceCodeEditor = new AceEditor();
+										aceCodeEditor.SetUpAceCodeEditor(editor,childPath,CodeEditorActivity.this);
+										LastUsedAceCodeEditor =  aceCodeEditor.GetAceEditor();
+										EditorSessionAddMap = new HashMap<>();
+										EditorSessionAddMap.put("editor", LastUsedAceCodeEditor);
+										EditorSessionAddMap.put("path", _path);
+										EditorSessionAddMap.put("editor_type", Editor.ACE_EDITOR);
+										EditorSession.add(EditorSessionAddMap);
+										EditorSessionAddMap.clear();
+										path = childPath;
 										}
 								});
 								((LinearLayout)EditorChooser.findViewById(R.id.Option_Sora_Editor)).setOnClickListener(new View.OnClickListener() {
@@ -262,8 +401,25 @@ public class CodeEditorActivity extends AppCompatActivity {
 										EditorSessionAddMap.put("editor_type", Editor.SORA_EDITOR);
 										EditorSession.add(EditorSessionAddMap);
 										EditorSessionAddMap.clear();
+										path = childPath;
 										}
 								});
+								if ("HTML".equals(TSUtils.fileType(FileTree.getString(position)))) {
+									((LinearLayout)EditorChooser.findViewById(R.id.Option_Run_Preview)).setVisibility(View.VISIBLE);
+									((LinearLayout)EditorChooser.findViewById(R.id.Option_Run_Preview)).setOnClickListener(new View.OnClickListener() {
+											@Override
+											public void onClick(View _view) {
+											try{
+												Preview.putExtra("url", "file:".concat(FileTree.getString(position)));
+												Preview.setClass(getApplicationContext(), BrowserActivity.class);
+												startActivity(Preview);
+											}
+											catch(JSONException e){
+												 
+											}
+											}
+									});
+								}
 								EditorChooserPopupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
 								EditorChooserPopupWindow.showAsDropDown(Layout2, 0, 0);
 							}
