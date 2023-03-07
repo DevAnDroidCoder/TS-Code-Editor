@@ -118,7 +118,13 @@ Glide.with(getApplicationContext()).load(Uri.parse("file:///android_asset/App/As
 								MainActivity.this.startActivity(intent);
 							}
 						});
-						MaterialDialog.setNegativeButton("Exit", new DialogInterface.OnClickListener() {
+						MaterialDialog.setNegativeButton("No thanks", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface _dialog, int _which) {
+								_showRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE, "Storage permissions is highly recommend for storing and reading files in device.Without this permission you can't use this app");
+							}
+						});
+						MaterialDialog.setNeutralButton("Exit", new DialogInterface.OnClickListener() {
 							@Override
 							public void onClick(DialogInterface _dialog, int _which) {
 								finishAffinity();

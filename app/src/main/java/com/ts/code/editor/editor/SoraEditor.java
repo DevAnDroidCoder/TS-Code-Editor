@@ -96,15 +96,7 @@ public class SoraEditor {
 		}
 		// add sora editor to _linear
 		_linear.addView(sora_editor);
-		/*
-		LastUsedSoraCodeEditor = sora_editor;
-		EditorSessionAddMap = new HashMap<>();
-		EditorSessionAddMap.put("editor", LastUsedSoraCodeEditor);
-		EditorSessionAddMap.put("path", _path);
-		EditorSessionAddMap.put("editor_type", Editor);
-		EditorSession.add(EditorSessionAddMap);
-		EditorSessionNumber++;
-		*/
+		
 	}
 	public CodeEditor GetSoraEditor (){
 		if(sora_editor == null){
