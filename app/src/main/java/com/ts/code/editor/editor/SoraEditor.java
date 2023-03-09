@@ -2,6 +2,7 @@ package com.ts.code.editor.editor;
 
 import com.ts.code.editor.R;
 import com.ts.code.editor.FileUtil;
+import com.ts.code.editor.SketchwareUtil;
 
 import io.github.rosemoe.sora.widget.CodeEditor;
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
@@ -31,11 +32,13 @@ import org.eclipse.tm4e.core.internal.theme.reader.ThemeReader;
 
 public class SoraEditor {
 	public CodeEditor sora_editor;
+    public String EditorPath;
 	
 	
 	public void SetUpSoraCodeEditor(LinearLayout _linear,String _path,Context _c){
-        // clear editor
-        _linear.removeAllViews();
+        EditorPath = _path;
+		// clear editor
+		_linear.removeAllViews();
 		// New Code editor
 		sora_editor = (CodeEditor)((LayoutInflater)_c.getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.sora_code_editor,null).findViewById(R.id.CodeEditor);
 		// Theme name from assets
@@ -57,27 +60,27 @@ public class SoraEditor {
 		
 		// Configuration of editor for java 
 		// Java Configration start
-        /*
+		/*
 		if (TSUtils.fileType(_path).equals("Java")) {
-			try {
-				EditorColorScheme colorScheme = sora_editor.getColorScheme();
-				if (!(colorScheme instanceof TextMateColorScheme)) {
-					IRawTheme iRawTheme = ThemeReader.readThemeSync(theme, _c.getAssets().open("Editor/Sora-editor/textmate/" + theme));
-					colorScheme = TextMateColorScheme.create(iRawTheme);
-					sora_editor.setColorScheme(colorScheme);
-				}
-				Language language = TextMateLanguage.create("java.tmLanguage.json",_c.getAssets().open("Editor/Sora-editor/textmate/java/syntaxes/java.tmLanguage.json"),new InputStreamReader(_c.getAssets().open("Editor/Sora-editor/textmate/java/language-configuration.json")),((TextMateColorScheme) colorScheme).getRawTheme());
-				
-				sora_editor.setEditorLanguage(language);
-				sora_editor.rerunAnalysis();
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			
-			
+		try {
+		EditorColorScheme colorScheme = sora_editor.getColorScheme();
+		if (!(colorScheme instanceof TextMateColorScheme)) {
+		IRawTheme iRawTheme = ThemeReader.readThemeSync(theme, _c.getAssets().open("Editor/Sora-editor/textmate/" + theme));
+		colorScheme = TextMateColorScheme.create(iRawTheme);
+		sora_editor.setColorScheme(colorScheme);
 		}
-        */
+		Language language = TextMateLanguage.create("java.tmLanguage.json",_c.getAssets().open("Editor/Sora-editor/textmate/java/syntaxes/java.tmLanguage.json"),new InputStreamReader(_c.getAssets().open("Editor/Sora-editor/textmate/java/language-configuration.json")),((TextMateColorScheme) colorScheme).getRawTheme());
+		
+		sora_editor.setEditorLanguage(language);
+		sora_editor.rerunAnalysis();
+		
+		} catch (Exception e) {
+		e.printStackTrace();
+		}
+		
+		
+		}
+		*/
 		// Java Configration end
 		
 		// Check if file path is readable
@@ -103,6 +106,16 @@ public class SoraEditor {
 			return null;
 		}else{
 			return sora_editor;
+		}
+	}
+	public void saveFile(Context c){
+		
+		if (new File(EditorPath).canWrite()) {
+			FileUtil.writeFile(EditorPath, sora_editor.getText().toString());
+            SketchwareUtil.showMessage(c, "File will be saved.");
+		}
+		else {
+			SketchwareUtil.showMessage(c, "Path can not be modified.");
 		}
 	}
 }

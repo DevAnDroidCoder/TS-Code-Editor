@@ -167,7 +167,7 @@ public class FilemanagerActivity extends AppCompatActivity {
 				startManually();
 		}
 		
-		//Import JSON
+		// Import JSON
 		/*
 
 */
