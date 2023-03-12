@@ -167,7 +167,7 @@ public class FilemanagerActivity extends AppCompatActivity {
 				startManually();
 		}
 		
-		//Import JSON
+		// Import JSON
 		/*
 
 */
@@ -562,6 +562,11 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 		android.content.res.ColorStateList clr = new android.content.res.ColorStateList(new int[][]{new int[]{}},new int[]{Color.parseColor(_color)});
 		android.graphics.drawable.RippleDrawable ripdr = new android.graphics.drawable.RippleDrawable(clr, null, null);
 		_view.setBackground(ripdr);
+	}
+	
+	
+	public void _FileOption(final String _path) {
+		
 	}
 	
 	public class Listview1_Backdrop_LinearLayout_Listview1Adapter extends BaseAdapter {
