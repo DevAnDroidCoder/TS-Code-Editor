@@ -45,22 +45,27 @@ import android.Manifest;
 import android.graphics.Typeface;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
+
 import androidx.core.content.FileProvider;
 import androidx.core.content.ContextCompat;
 import androidx.core.app.ActivityCompat;
+
+import com.ts.code.editor.editor.Editor;
+import com.ts.code.editor.editor.SoraEditor;
+import com.ts.code.editor.editor.AceEditor;
+import com.ts.code.editor.editor.TSUtils;
+
 import org.eclipse.tm4e.core.theme.IRawTheme;
 import org.eclipse.tm4e.core.internal.theme.reader.ThemeReader;
+
 import io.github.rosemoe.sora.widget.CodeEditor;
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
 import io.github.rosemoe.sora.lang.Language;
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage;
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme;
 import io.github.rosemoe.sora.langs.java.JavaLanguage;
-import java.io.InputStreamReader;
-import com.ts.code.editor.editor.Editor;
-import com.ts.code.editor.editor.SoraEditor;
-import com.ts.code.editor.editor.AceEditor;
-import com.ts.code.editor.editor.TSUtils;
+
+import java.io.InputStreamReader;
 
 public class CodeEditorActivity extends AppCompatActivity {
 	
@@ -163,6 +168,13 @@ public class CodeEditorActivity extends AppCompatActivity {
 					EditorChooserPopupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
 					EditorChooserPopupWindow.showAsDropDown(textview2, 0, 0);
 				}
+			}
+		});
+		
+		textview3.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View _view) {
+				SketchwareUtil.showMessage(getApplicationContext(), "Open supported file in editor to save it.");
 			}
 		});
 	}
@@ -323,12 +335,19 @@ public class CodeEditorActivity extends AppCompatActivity {
 	
 	
 	public void _FileTree(final String _path, final View _view) {
+		// Clear view before add file tree to ignore double,triple file tree
 		((LinearLayout)_view).removeAllViews();
+		// Get file list to display as file tree
 		FileUtil.listDir(_path, FileList);
+		// Handle JSONException
 		try{
+			// Parse JSON into JSONArray
 			JSONArray FileTree = new JSONArray(new Gson().toJson(FileList));
+			// Run a loop for each file to add them as FileTree
 			for(int _repeat19 = 0; _repeat19 < (int)(FileTree.length()); _repeat19++) {
+				// Let loop number be position
 				final int position = _repeat19;
+				// Ready to Inflate (Add) FileTree Layout into _view(view parameter of more block).
 				FileTreeInflater = getLayoutInflater().inflate(R.layout.file_tree, null);
 				final LinearLayout Layout = ((LinearLayout)FileTreeInflater.findViewById(R.id.linear5));
 				final LinearLayout Layout2 = ((LinearLayout)FileTreeInflater.findViewById(R.id.linear2));
@@ -336,7 +355,9 @@ public class CodeEditorActivity extends AppCompatActivity {
 				final ImageView ShowMoreOrLess = ((ImageView)FileTreeInflater.findViewById(R.id.imageview1));
 				final ImageView FileType = ((ImageView)FileTreeInflater.findViewById(R.id.imageview2));
 				final TextView FileName = ((TextView)FileTreeInflater.findViewById(R.id.textview1));
+				// Hide child for all files by default
 				LayoutToInflateChild.setVisibility(View.GONE);
+				// Check if current(loop) path is file or folder.
 				if (FileUtil.isDirectory(FileTree.getString(position))) {
 					FileType.setImageResource(R.drawable.ic_folder_black);
 					ShowMoreOrLess.setImageResource(R.drawable.ic_arrow_drop_down_black);
@@ -380,6 +401,7 @@ public class CodeEditorActivity extends AppCompatActivity {
 										final AceEditor aceCodeEditor = new AceEditor();
 										aceCodeEditor.SetUpAceCodeEditor(editor,childPath,CodeEditorActivity.this);
 										LastUsedAceCodeEditor =  aceCodeEditor.GetAceEditor();
+										LastUsedSoraCodeEditor = null;
 										EditorSessionAddMap = new HashMap<>();
 										EditorSessionAddMap.put("editor", LastUsedAceCodeEditor);
 										EditorSessionAddMap.put("path", _path);
@@ -387,6 +409,12 @@ public class CodeEditorActivity extends AppCompatActivity {
 										EditorSession.add(EditorSessionAddMap);
 										EditorSessionAddMap.clear();
 										path = childPath;
+										textview3.setOnClickListener(new View.OnClickListener() {
+												@Override
+												public void onClick(View _view) {
+												aceCodeEditor.saveFile();
+												}
+										});
 										}
 								});
 								((LinearLayout)EditorChooser.findViewById(R.id.Option_Sora_Editor)).setOnClickListener(new View.OnClickListener() {
@@ -395,6 +423,7 @@ public class CodeEditorActivity extends AppCompatActivity {
 										final SoraEditor soraCodeEditor = new SoraEditor();
 										soraCodeEditor.SetUpSoraCodeEditor(editor,childPath,CodeEditorActivity.this);
 										LastUsedSoraCodeEditor =  soraCodeEditor.GetSoraEditor();
+										LastUsedAceCodeEditor = null;
 										EditorSessionAddMap = new HashMap<>();
 										EditorSessionAddMap.put("editor", LastUsedSoraCodeEditor);
 										EditorSessionAddMap.put("path", _path);
@@ -402,6 +431,12 @@ public class CodeEditorActivity extends AppCompatActivity {
 										EditorSession.add(EditorSessionAddMap);
 										EditorSessionAddMap.clear();
 										path = childPath;
+										textview3.setOnClickListener(new View.OnClickListener() {
+												@Override
+												public void onClick(View _view) {
+												soraCodeEditor.saveFile(CodeEditorActivity.this);
+												}
+										});
 										}
 								});
 								if ("HTML".equals(TSUtils.fileType(FileTree.getString(position)))) {
