@@ -34,26 +34,22 @@
 			android:name=".SettingActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
-			android:supportsPictureInPicture="true"
-			android:screenOrientation="portrait" />
+			android:supportsPictureInPicture="true" />
 		<activity
 			android:name=".AboutActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
-			android:supportsPictureInPicture="true"
-			android:screenOrientation="portrait" />
+			android:supportsPictureInPicture="true" />
 		<activity
 			android:name=".CodeEditorActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
-			android:supportsPictureInPicture="true"
-			android:screenOrientation="portrait" />
+			android:supportsPictureInPicture="true" />
 		<activity
 			android:name=".BrowserActivity"
 			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
 			android:hardwareAccelerated="true"
-			android:supportsPictureInPicture="true"
-			android:screenOrientation="portrait" />
+			android:supportsPictureInPicture="true" />
 		<activity
 			android:name=".DebugActivity"
 			android:screenOrientation="portrait" />

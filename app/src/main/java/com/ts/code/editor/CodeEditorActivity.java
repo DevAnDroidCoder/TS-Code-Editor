@@ -11,6 +11,7 @@ import android.media.*;
 import android.net.*;
 import android.net.Uri;
 import android.os.*;
+import android.os.Bundle;
 import android.text.*;
 import android.text.style.*;
 import android.util.*;
@@ -35,6 +36,7 @@ import io.github.rosemoe.sora.*;
 import io.github.rosemoe.sora.langs.java.*;
 import io.github.rosemoe.sora.langs.textmate.*;
 import java.io.*;
+import java.io.InputStream;
 import java.text.*;
 import java.util.*;
 import java.util.ArrayList;
@@ -339,6 +341,18 @@ public class CodeEditorActivity extends AppCompatActivity {
 		((LinearLayout)_view).removeAllViews();
 		// Get file list to display as file tree
 		FileUtil.listDir(_path, FileList);
+		// Sort folder first then file
+		final class FileComparator implements Comparator<String> {
+				public int compare(String f1, String f2) {
+						if(f1 == f2) return 0;
+						if(FileUtil.isDirectory(f1) && FileUtil.isFile(f2))
+						return -1;
+						if(FileUtil.isFile(f1) && FileUtil.isDirectory(f2))
+						return 1;
+						return f1.compareToIgnoreCase(f2);
+				}
+		}
+		Collections.sort(FileList, new FileComparator());
 		// Handle JSONException
 		try{
 			// Parse JSON into JSONArray

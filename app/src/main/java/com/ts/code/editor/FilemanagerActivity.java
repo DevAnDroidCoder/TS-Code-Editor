@@ -15,6 +15,7 @@ import android.media.*;
 import android.net.*;
 import android.net.Uri;
 import android.os.*;
+import android.os.Bundle;
 import android.text.*;
 import android.text.style.*;
 import android.util.*;
@@ -37,6 +38,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -44,6 +46,7 @@ import io.github.rosemoe.sora.*;
 import io.github.rosemoe.sora.langs.java.*;
 import io.github.rosemoe.sora.langs.textmate.*;
 import java.io.*;
+import java.io.InputStream;
 import java.text.*;
 import java.util.*;
 import java.util.ArrayList;
@@ -80,6 +83,7 @@ public class FilemanagerActivity extends AppCompatActivity {
 	
 	private ArrayList<String> fileList = new ArrayList<>();
 	private ArrayList<HashMap<String, Object>> FileListData = new ArrayList<>();
+	private ArrayList<String> findAndReplace = new ArrayList<>();
 	
 	private LinearLayout Main_LinearLayout;
 	private LinearLayout Error_LinearLayout;
@@ -94,6 +98,8 @@ public class FilemanagerActivity extends AppCompatActivity {
 	private AlertDialog.Builder AppPermissions;
 	private Intent Activities = new Intent();
 	private TypedValue TypedValue;
+	private View ly;
+	private MaterialAlertDialogBuilder HTMLTemplateDialog;
 	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
@@ -117,6 +123,7 @@ public class FilemanagerActivity extends AppCompatActivity {
 		theme = getSharedPreferences("theme", Activity.MODE_PRIVATE);
 		AppPermissions = new AlertDialog.Builder(this);
 		TypedValue TypedValue = new TypedValue();
+		HTMLTemplateDialog = new MaterialAlertDialogBuilder(this);
 		
 		Main_Button_UseThisFolder.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -150,6 +157,13 @@ public class FilemanagerActivity extends AppCompatActivity {
 			public void onClick(View _view) {
 				Activities.setClass(getApplicationContext(), SettingActivity.class);
 				startActivity(Activities);
+			}
+		});
+		
+		_fab.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View _view) {
+				_CreateProject();
 			}
 		});
 	}
@@ -467,6 +481,17 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 			Error_LinearLayout.setVisibility(View.GONE);
 			FileListData.clear();
 			FileUtil.listDir(_path, fileList);
+			final class FileComparator implements Comparator<String> {
+					public int compare(String f1, String f2) {
+							if(f1 == f2) return 0;
+							if(FileUtil.isDirectory(f1) && FileUtil.isFile(f2))
+							return -1;
+							if(FileUtil.isFile(f1) && FileUtil.isDirectory(f2))
+							return 1;
+							return f1.compareToIgnoreCase(f2);
+					}
+			}
+			Collections.sort(fileList, new FileComparator());
 			pos = 0;
 			for(int _repeat13 = 0; _repeat13 < (int)(fileList.size()); _repeat13++) {
 				{
@@ -565,8 +590,213 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 	}
 	
 	
-	public void _FileOption(final String _path) {
+	public void _CreateProject() {
+		// Create bottom sheet
+		final com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog = new com.google.android.material.bottomsheet.BottomSheetDialog(FilemanagerActivity.this);
 		
+		final View bottomSheetView = getLayoutInflater().inflate(R.layout.project_template,null);
+		bottomSheetDialog.setContentView(bottomSheetView);
+		//bottomSheetDialog.getWindow().findViewById(R.id.design_bottom_sheet).setBackgroundResource(android.R.color.transparent);
+		bottomSheetView.findViewById(R.id.template_html).setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View _view) {
+				            
+				
+				bottomSheetDialog.dismiss();
+				EditText edittext = new EditText(FilemanagerActivity.this);
+				HTMLTemplateDialog.setTitle("Create project with template");
+				HTMLTemplateDialog.setMessage("Enter project name");
+				HTMLTemplateDialog.setView(edittext);
+				HTMLTemplateDialog.setPositiveButton("Create", new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface _dialog, int _which) {
+						if (edittext.getText().toString().equals("")) {
+							SketchwareUtil.showMessage(getApplicationContext(), "Please enter project name to create project");
+						}
+						else {
+							if (FileUtil.isExistFile(path.concat(File.separator.concat(edittext.getText().toString())))) {
+								SketchwareUtil.showMessage(getApplicationContext(), "File path already exist");
+							}
+							else {
+								_save_assets_folder("Template/HTML/${TS Project Name}", path.concat(File.separator.concat(edittext.getText().toString())));
+								_save_assets_folder("Template/HTML/${TS Project Name}/TSCodeEditor", path.concat(File.separator.concat(edittext.getText().toString().concat(File.separator.concat("TSCodeEditor")))));
+								_FindAndReplace(path.concat(File.separator.concat(edittext.getText().toString())), "${TS Project Name}", edittext.getText().toString());
+								_FindAndReplace(path.concat(File.separator.concat(edittext.getText().toString())), "${TS Project Path}", path.concat(File.separator.concat(edittext.getText().toString())));
+								_FileList(path);
+							}
+						}
+					}
+				});
+				HTMLTemplateDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface _dialog, int _which) {
+						 
+					}
+				});
+				HTMLTemplateDialog.create().show();
+					}
+		});
+		bottomSheetDialog.show();
+	}
+	
+	
+	public void _FindAndReplace(final String _path, final String _find, final String _replace) {
+		FileUtil.listDir(_path, findAndReplace);
+		try{
+			JSONArray FindAndReplace = new JSONArray(new Gson().toJson(findAndReplace));
+			for (int position = 0; position < (int)(FindAndReplace.length()); position++) {
+				if (FileUtil.isExistFile(FindAndReplace.getString(position))) {
+					if (FileUtil.isDirectory(FindAndReplace.getString(position))) {
+						if (FindAndReplace.getString(position).contains(_find)) {
+							File before = new File(FindAndReplace.getString(position));
+							File after = new File(FindAndReplace.getString(position).replace(_find, _replace));
+							if(before.renameTo(after)){
+								    
+							} else {
+								    
+							}
+						}
+						_FindAndReplace(FindAndReplace.getString(position), _find, _replace);
+					}
+					else {
+						if (FileUtil.readFile(FindAndReplace.getString(position)).contains(_find)) {
+							FileUtil.writeFile(FindAndReplace.getString(position), FileUtil.readFile(FindAndReplace.getString(position)).replace(_find, _replace));
+						}
+						if (FindAndReplace.getString(position).contains(_find)) {
+							File before = new File(FindAndReplace.getString(position));
+							File after = new File(FindAndReplace.getString(position).replace(_find, _replace));
+							if(before.renameTo(after)){
+								    
+							} else {
+								    
+							}
+						}
+					}
+				}
+			}
+		}
+		catch(JSONException e){
+			SketchwareUtil.showMessage(getApplicationContext(), "Failed to replace");
+		}
+	}
+	
+	
+	public void _save_assets_folder(final String _path, final String _save_path) {
+		new CustomAssetsManager(FilemanagerActivity.this).saveFolder(_path,_save_path);
+	}
+	
+	public static class CustomAssetsManager {
+			
+			private Context myContext;
+			
+			public CustomAssetsManager(Context c) {
+					myContext = c;
+					
+			}
+			
+			public CustomAssetsManager(Fragment f) {
+					myContext = f.getActivity();
+					
+			}
+			
+			public CustomAssetsManager(DialogFragment df) {
+					myContext = df.getActivity();
+					
+			}
+			
+			public void saveFile(String path , String pathTo) {
+					copyFile(path,pathTo);
+					
+			}
+			
+			public void saveFolder(String path , String pathTo) {
+					copyAssets(path,pathTo);
+			}
+			
+			private void copyAssets(final String _folder , final String _to) {
+					AssetManager assetManager = myContext.getAssets();
+					String[] files = null;
+					try {
+							files = assetManager.list(_folder);
+					} catch (java.io.IOException e) {
+							Log.e("tag", "Failed to get asset file list.", e);
+					}
+					if (files != null) for (String filename : files) {
+							java.io.InputStream in = null;
+							java.io.OutputStream out = null;
+							try {
+									in = assetManager.open(_folder + "/" +filename);
+									if(!new java.io.File(_to).exists()) {
+											new java.io.File(_to).mkdir();
+											
+											java.io.File outFile = new java.io.File(_to, filename);
+											if (!(outFile.exists())) {// File does not exist...
+													out = new java.io.FileOutputStream(outFile);
+													copyFile(in, out);
+											}
+											
+									} else {
+											
+											java.io.File outFile = new java.io.File(_to, filename);
+											if (!(outFile.exists())) {// File does not exist...
+													out = new java.io.FileOutputStream(outFile);
+													copyFile(in, out);
+											}
+									}
+							} catch(java.io.IOException e) {
+									Log.e("tag", "Failed to copy asset file: " + filename, e);
+							}     
+							finally {
+									if (in != null) {
+											try {
+													in.close();
+											} catch (java.io.IOException e) {
+													// NOOP
+											}
+									}
+									if (out != null) {
+											try {
+													out.close();
+											} catch (java.io.IOException e) {
+													// NOOP
+											}
+									}
+							}  
+					}
+			}
+			private void copyFile(java.io.InputStream in, java.io.OutputStream out) throws java.io.IOException {
+					byte[] buffer = new byte[1024];
+					int read;
+					while((read = in.read(buffer)) != -1){
+							out.write(buffer, 0, read);
+					}
+			}
+			
+			private void copyFile(String filename, String outPath) {
+					AssetManager assetManager = myContext.getAssets();
+					
+					java.io.InputStream in;
+					java.io.OutputStream out;
+					try {
+							in = assetManager.open(filename);
+							String newFileName = outPath + "/" + filename;
+							out = new java.io.FileOutputStream(newFileName);
+							
+							byte[] buffer = new byte[1024];
+							int read;
+							while ((read = in.read(buffer)) != -1) {
+									out.write(buffer, 0, read);
+							}
+							in.close();
+							out.flush();
+							out.close();
+					} catch (Exception e) {
+					}
+					
+			}
+	}
+	{
+			
 	}
 	
 	public class Listview1_Backdrop_LinearLayout_Listview1Adapter extends BaseAdapter {
@@ -608,22 +838,21 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 			final ImageView imageview1 = _view.findViewById(R.id.imageview1);
 			
 			textview1.setText(Uri.parse(_data.get((int)_position).get("path").toString()).getLastPathSegment());
-			if (FileUtil.isDirectory(path.concat("/".concat(textview1.getText().toString())))) {
-				if (FileUtil.isExistFile(path.concat("/".concat(textview1.getText().toString())).concat("/".concat(".TSDwebsiteCreator.project")))) {
+			if (FileUtil.isDirectory(path.concat(File.separator.concat(textview1.getText().toString())))) {
+				if (FileUtil.isExistFile(path.concat(File.separator.concat(textview1.getText().toString())).concat(File.separator.concat("TSCodeEditor".concat(File.separator.concat("TSCodeEditor.project")))))) {
 					try{
-						isProject = new Gson().fromJson(FileUtil.readFile(path.concat("/".concat(textview1.getText().toString())).concat("/".concat(".TSDwebsiteCreator.project"))), new TypeToken<HashMap<String, Object>>(){}.getType());
-						if ("TSDWebsiteCreator".equals(isProject.get("project").toString())) {
-							if (isProject.get("path").toString().equals(path.concat("/".concat(textview1.getText().toString())))) {
+						isProject = new Gson().fromJson(FileUtil.readFile(path.concat(File.separator.concat(textview1.getText().toString())).concat(File.separator.concat("TSCodeEditor".concat(File.separator.concat("TSCodeEditor.project"))))), new TypeToken<HashMap<String, Object>>(){}.getType());
+						if ("TSCodeEditor".equals(isProject.get("project").toString())) {
+							if (isProject.get("path").toString().equals(path.concat(File.separator.concat(textview1.getText().toString())))) {
 								cardview2.setRadius((float)360);
 								imageview1.setImageResource(R.drawable.logo_black);
 								linear1.setOnClickListener(new View.OnClickListener() {
 									@Override
 									public void onClick(View _view) {
 										Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
-										Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+										Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 										Activities.putExtra("isInsideProject", "true");
 										Activities.putExtra("type", "project");
-										Activities.setFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
 										Activities.setClass(getApplicationContext(), CodeEditorActivity.class);
 										startActivity(Activities);
 									}
@@ -638,7 +867,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 										if (getIntent().hasExtra("lastPath")) {
 											if (getIntent().hasExtra("type")) {
 												Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
-												Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+												Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 												Activities.putExtra("type", getIntent().getStringExtra("type"));
 												if (isInsideProject) {
 													Activities.putExtra("isInsideProject", "true");
@@ -649,7 +878,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 											else {
 												Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 												Activities.putExtra("type", "project");
-												Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+												Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 												if (isInsideProject) {
 													Activities.putExtra("isInsideProject", "true");
 												}
@@ -661,7 +890,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 											if (getIntent().hasExtra("type")) {
 												Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 												Activities.putExtra("type", getIntent().getStringExtra("type"));
-												Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+												Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 												if (isInsideProject) {
 													Activities.putExtra("isInsideProject", "true");
 												}
@@ -671,7 +900,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 											else {
 												Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 												Activities.putExtra("type", "project");
-												Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+												Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 												if (isInsideProject) {
 													Activities.putExtra("isInsideProject", "true");
 												}
@@ -693,7 +922,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 										if (getIntent().hasExtra("type")) {
 											Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 											Activities.putExtra("type", getIntent().getStringExtra("type"));
-											Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+											Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 											if (isInsideProject) {
 												Activities.putExtra("isInsideProject", "true");
 											}
@@ -703,7 +932,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 										else {
 											Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 											Activities.putExtra("type", "project");
-											Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+											Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 											if (isInsideProject) {
 												Activities.putExtra("isInsideProject", "true");
 											}
@@ -715,7 +944,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 										if (getIntent().hasExtra("project")) {
 											Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 											Activities.putExtra("type", getIntent().getStringExtra("type"));
-											Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+											Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 											if (isInsideProject) {
 												Activities.putExtra("isInsideProject", "true");
 											}
@@ -725,7 +954,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 										else {
 											Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 											Activities.putExtra("type", "project");
-											Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+											Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 											if (isInsideProject) {
 												Activities.putExtra("isInsideProject", "true");
 											}
@@ -746,7 +975,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 									if (getIntent().hasExtra("type")) {
 										Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 										Activities.putExtra("type", getIntent().getStringExtra("type"));
-										Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+										Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 										if (isInsideProject) {
 											Activities.putExtra("isInsideProject", "true");
 										}
@@ -756,7 +985,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 									else {
 										Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 										Activities.putExtra("type", "project");
-										Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+										Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 										if (isInsideProject) {
 											Activities.putExtra("isInsideProject", "true");
 										}
@@ -768,7 +997,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 									if (getIntent().hasExtra("project")) {
 										Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 										Activities.putExtra("type", getIntent().getStringExtra("type"));
-										Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+										Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 										if (isInsideProject) {
 											Activities.putExtra("isInsideProject", "true");
 										}
@@ -778,7 +1007,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 									else {
 										Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 										Activities.putExtra("type", "project");
-										Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+										Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 										if (isInsideProject) {
 											Activities.putExtra("isInsideProject", "true");
 										}
@@ -800,7 +1029,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 								if (getIntent().hasExtra("type")) {
 									Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 									Activities.putExtra("type", getIntent().getStringExtra("type"));
-									Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+									Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 									if (isInsideProject) {
 										Activities.putExtra("isInsideProject", "true");
 									}
@@ -810,7 +1039,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 								else {
 									Activities.putExtra("lastPath", getIntent().getStringExtra("lastPath"));
 									Activities.putExtra("type", "project");
-									Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+									Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 									if (isInsideProject) {
 										Activities.putExtra("isInsideProject", "true");
 									}
@@ -822,7 +1051,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 								if (getIntent().hasExtra("project")) {
 									Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 									Activities.putExtra("type", getIntent().getStringExtra("type"));
-									Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+									Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 									if (isInsideProject) {
 										Activities.putExtra("isInsideProject", "true");
 									}
@@ -832,7 +1061,7 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 								else {
 									Activities.putExtra("lastPath", FileUtil.getExternalStorageDir());
 									Activities.putExtra("type", "project");
-									Activities.putExtra("path", path.concat("/".concat(textview1.getText().toString())));
+									Activities.putExtra("path", path.concat(File.separator.concat(textview1.getText().toString())));
 									if (isInsideProject) {
 										Activities.putExtra("isInsideProject", "true");
 									}
@@ -852,37 +1081,38 @@ _setTextColor(Error_TextView_AccessDenied, colorOnSecondary);
 					public void onClick(View _view) {
 						if (isInsideProject) {
 							try{
-								if (Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("html").length()), (int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".html")) {
-									
+								if (Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("html").length()), (int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".html")) {
+									Activities.putExtra("url", "file:".concat(path.concat(File.separator.concat(textview1.getText().toString()))));
+									Activities.setClass(getApplicationContext(), BrowserActivity.class);
 									startActivity(Activities);
 								}
 								try{
-									if (Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("apk").length()), (int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".apk")) {
-										_Install(path.concat("/".concat(textview1.getText().toString())));
+									if (Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("apk").length()), (int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".apk")) {
+										_Install(path.concat(File.separator.concat(textview1.getText().toString())));
 									}
 									else {
-										_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+										_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 									}
 								}catch(Exception e){
-									_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+									_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 								}
 							}catch(Exception e){
-								_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+								_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 							}
 						}
 						else {
 							try{
-								if (Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("apk").length()), (int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".apk")) {
-									_Install(path.concat("/".concat(textview1.getText().toString())));
+								if (Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("apk").length()), (int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".apk")) {
+									_Install(path.concat(File.separator.concat(textview1.getText().toString())));
 								}
-								else if (Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("html").length()), (int)(Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".html")){
-									_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+								else if (Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().substring((int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length() - ".".concat("html").length()), (int)(Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment().length())).equals(".html")){
+									_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 								}
 								else {
-									_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+									_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 								}
 							}catch(Exception e){
-								_OpenFile(path.concat("/".concat(textview1.getText().toString())), Uri.parse(path.concat("/".concat(textview1.getText().toString()))).getLastPathSegment());
+								_OpenFile(path.concat(File.separator.concat(textview1.getText().toString())), Uri.parse(path.concat(File.separator.concat(textview1.getText().toString()))).getLastPathSegment());
 							}
 						}
 					}
